@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChakraProvider, Box, Input, Button, Heading, Text, VStack, Container, Spinner } from '@chakra-ui/react';
+import { ChakraProvider, Box, Input, Button, Heading, Text, VStack, Container, Spinner, Flex } from '@chakra-ui/react';
 import { defaultSystem } from "@chakra-ui/react";
 import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -16,8 +16,7 @@ L.Icon.Default.mergeOptions({
 const API_BASE_URL = 'http://localhost:5000';
 
 // Fixed bounding box size (in percentage of the map view)
-const FIXED_BOX_WIDTH_PERCENT = 40;
-const FIXED_BOX_HEIGHT_PERCENT = 40;
+const FIXED_BOX_SIZE_PERCENT = 60;
 
 // Component to handle the fixed bounding box
 function FixedBoundingBox({ onBoundsChange }: { onBoundsChange: (bounds: [[number, number], [number, number]]) => void }) {
@@ -48,14 +47,16 @@ function FixedBoundingBox({ onBoundsChange }: { onBoundsChange: (bounds: [[numbe
     const latDiff = northEast.lat - southWest.lat;
     const lngDiff = northEast.lng - southWest.lng;
     
-    // Calculate the fixed box dimensions (percentage of the view)
-    const boxLatSize = latDiff * (FIXED_BOX_HEIGHT_PERCENT / 100);
-    const boxLngSize = lngDiff * (FIXED_BOX_WIDTH_PERCENT / 100);
+    // Use the smaller dimension to ensure a square
+    const boxSize = Math.min(
+      latDiff * (FIXED_BOX_SIZE_PERCENT / 100),
+      lngDiff * (FIXED_BOX_SIZE_PERCENT / 100)
+    );
     
     // Calculate the fixed box corners
     const fixedBounds: [[number, number], [number, number]] = [
-      [center.lat - boxLatSize/2, center.lng - boxLngSize/2],
-      [center.lat + boxLatSize/2, center.lng + boxLngSize/2]
+      [center.lat - boxSize/2, center.lng - boxSize/2],
+      [center.lat + boxSize/2, center.lng + boxSize/2]
     ];
     
     setBounds(fixedBounds);
@@ -75,6 +76,67 @@ function FixedBoundingBox({ onBoundsChange }: { onBoundsChange: (bounds: [[numbe
       pathOptions={{ color: 'red', weight: 2, fillOpacity: 0.1 }}
     />
   ) : null;
+}
+
+// Add this new component after the FixedBoundingBox component
+function GraphVisualization({ graphData }: { graphData: any }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (!graphData || !graphData.nodes || !graphData.edges) return;
+    
+    // Clear previous layers if any
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Polyline || (layer instanceof L.CircleMarker)) {
+        map.removeLayer(layer);
+      }
+    });
+    
+    // Add nodes
+    const nodeMarkers: {[key: string]: L.CircleMarker} = {};
+    graphData.nodes.forEach((node: any) => {
+      // Make street nodes darker but with moderate size
+      const color = node.type === 'building' ? 'blue' : 
+                   node.type === 'projection' ? 'green' : '#333';
+      
+      const radius = node.type === 'building' ? 4 : 
+                    node.type === 'projection' ? 2.5 : 3;
+      
+      const weight = node.type === 'street' ? 1.5 : 1;
+      
+      const marker = L.circleMarker([node.lat, node.lng], {
+        radius: radius,
+        fillColor: color,
+        color: color,
+        weight: weight,
+        opacity: 0.9,
+        fillOpacity: 0.8
+      }).addTo(map);
+      
+      nodeMarkers[node.id] = marker;
+    });
+    
+    // Add edges
+    graphData.edges.forEach((edge: any) => {
+      const sourceNode = graphData.nodes.find((n: any) => n.id === edge.source);
+      const targetNode = graphData.nodes.find((n: any) => n.id === edge.target);
+      
+      if (sourceNode && targetNode) {
+        // Make connections darker but with moderate thickness
+        const color = edge.type === 'perpendicular' ? '#800080' : '#444';
+        const weight = edge.type === 'perpendicular' ? 2 : 1.5;
+        
+        L.polyline([[sourceNode.lat, sourceNode.lng], [targetNode.lat, targetNode.lng]], {
+          color: color,
+          weight: weight,
+          opacity: 0.85
+        }).addTo(map);
+      }
+    });
+    
+  }, [map, graphData]);
+  
+  return null;
 }
 
 function App() {
@@ -142,7 +204,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          bbox: [north, south, east, west], // Format expected by your backend
+          bbox: [north, south, east, west],
           location_name: locationName
         }),
       });
@@ -217,7 +279,7 @@ function App() {
             <>
               <Box 
                 width="100%" 
-                height="400px" 
+                height="600px" 
                 borderRadius="lg" 
                 overflow="hidden" 
                 boxShadow="lg" 
@@ -254,6 +316,9 @@ function App() {
                     </Popup>
                   </Marker>
                   <FixedBoundingBox onBoundsChange={setBoundingBox} />
+                  {allocationResult && allocationResult.graph_data && (
+                    <GraphVisualization graphData={allocationResult.graph_data} />
+                  )}
                 </MapContainer>
               </Box>
               
@@ -304,6 +369,32 @@ function App() {
                   <Text mt={2}>
                     Network edges: {allocationResult.edges_count}
                   </Text>
+                  <Text mt={2} fontWeight="bold">
+                    Graph visualization is displayed on the map above.
+                  </Text>
+                  <Box mt={4}>
+                    <Text fontSize="sm">Legend:</Text>
+                    <Flex mt={1} alignItems="center">
+                      <Box w="12px" h="12px" borderRadius="full" bg="blue" mr={2}></Box>
+                      <Text fontSize="sm">Building nodes</Text>
+                    </Flex>
+                    <Flex mt={1} alignItems="center">
+                      <Box w="12px" h="12px" borderRadius="full" bg="green" mr={2}></Box>
+                      <Text fontSize="sm">Projection nodes</Text>
+                    </Flex>
+                    <Flex mt={1} alignItems="center">
+                      <Box w="12px" h="12px" borderRadius="full" bg="#333" mr={2}></Box>
+                      <Text fontSize="sm">Street nodes</Text>
+                    </Flex>
+                    <Flex mt={1} alignItems="center">
+                      <Box w="12px" h="2px" bg="#800080" mr={2}></Box>
+                      <Text fontSize="sm">Building-to-street connections</Text>
+                    </Flex>
+                    <Flex mt={1} alignItems="center">
+                      <Box w="12px" h="2px" bg="#444" mr={2}></Box>
+                      <Text fontSize="sm">Street network</Text>
+                    </Flex>
+                  </Box>
                 </Box>
               )}
             </>
