@@ -1,5 +1,8 @@
 .App {
   text-align: center;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #f5f7fa;
 }
 
 .App-logo {
@@ -35,4 +38,17 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.leaflet-popup-content {
+  min-width: 200px;
+}
+
+.app-background {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%);
 }
