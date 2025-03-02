@@ -191,14 +191,14 @@ def anneal(G : MultiDiGraph, routes, route_lengths, T):
 
 
 def gen_route_from_pure(G, pure_routes):
-    routes = [[] for _ in range(len(pure_routes))]
-    route_lengths = [0 for _ in range(len(pure_routes))]
-    for i in range(len(pure_routes)):
+    routes = {k : [] for k in pure_routes}
+    route_lengths = {k : 0 for k in pure_routes}
+    for i in pure_routes:
         for j in range(len(pure_routes[i]) - 1):
             routes[i].extend(shortest_path(G, source=pure_routes[i][j], target=pure_routes[i][j+1]))
             if j != len(pure_routes[i]) - 1:
                 routes[i].pop()
-            route_lengths[i] += dist(pure_routes[i][j], pure_routes[i][j+1])
+            route_lengths[i] += dist(G, pure_routes[i][j], pure_routes[i][j+1])
     return routes, route_lengths
 
 def simulated_annealing(G, pure_routes, route_lengths, T=10):
@@ -211,6 +211,12 @@ def simulated_annealing(G, pure_routes, route_lengths, T=10):
         anneal(G, pure_routes, route_lengths, T)
     return pure_routes, route_lengths
 
+def get_actual_solution(G, starting_pts):
+    routes, route_lengths, pure_routes = get_init_solution(G, starting_pts)
+    new_pure_routes, new_route_lengths = simulated_annealing(G, pure_routes, route_lengths)
+
+    new_routes, new_new_route_lengths = gen_route_from_pure(G, new_pure_routes)
+    return new_routes, new_pure_routes, new_new_route_lengths
 
 # Example usage:
 if __name__ == "__main__":
@@ -230,13 +236,14 @@ if __name__ == "__main__":
     starting_pts = random.sample([n for n, dat in grf.nodes(data=True) if dat.get('node_type') == 'building'], 5)
 
     print("Getting Routes")
-    routes, route_lengths, pure_routes = get_init_solution(grf, starting_pts)
+    routes, pure_routes, route_lengths = get_actual_solution(grf, starting_pts)
+
     for start, route in routes.items():
         print(f"Route starting at {start}: {route}")
         print(f"Total length: {route_lengths[start]}")
 
-    print("STARTING SIMULATED ANNEALING")
-    pure_routes, route_lengths = simulated_annealing(grf, pure_routes, route_lengths)
-    for i in pure_routes:
-        print(pure_routes[i])
-        print(route_lengths[i])
+    # print("STARTING SIMULATED ANNEALING")
+    # pure_routes, route_lengths = simulated_annealing(grf, pure_routes, route_lengths)
+    # for i in pure_routes:
+    #     print(pure_routes[i])
+    #     print(route_lengths[i])
