@@ -12,8 +12,15 @@ def nearest_unvisited_node(grf : MultiDiGraph, start, visited):
     while pq:
         curr_dist, curr_node = heapq.heappop(pq)
 
-        if curr_node not in visited:
-            
+        if (curr_node not in visited) and "node_type" in grf[curr_node]:
+            #generate path
+            node = curr_node
+            path = []
+            while node != -1:
+                path.append(node)
+                node = prev[node]
+
+            return curr_node, curr_dist, path
 
         if curr_dist > distances[curr_node]:
             continue
@@ -28,4 +35,5 @@ def nearest_unvisited_node(grf : MultiDiGraph, start, visited):
 
 def get_init_solution(grf, starting_pts):
     # Greedy solution. Take the point with the min length so far, find nearest unvisited node, connect using shortest path
+
 
