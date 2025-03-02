@@ -114,9 +114,9 @@ def anneal(G : MultiDiGraph, routes, route_lengths, T):
         l = random.randint(1, routes[n]-2)
         r = random.randint(l, routes[n]-2)
 
-        delta = -(dist(G.nodes[routes[n][r]], G.nodes[routes[n][min(r+1, len(routes)-1)]]) + dist(G.nodes[l-1], G.nodes[l])) \
-                + (dist(G.nodes[l-1], G.nodes[r]) +
-                   (dist(G.nodes[l], G.nodes[r+1]) if r+1 != n else 0))
+        delta = -(dist(G, G.nodes[routes[n][r]], G.nodes[routes[n][min(r+1, len(routes)-1)]]) + dist(G, G.nodes[l-1], G.nodes[l])) \
+                + (dist(G, G.nodes[l-1], G.nodes[r]) +
+                   (dist(G, G.nodes[l], G.nodes[r+1]) if r+1 != n else 0))
 
         if delta < 0:
             routes[n][l:r+1] = routes[n][r:l-1:-1]
@@ -137,31 +137,31 @@ def anneal(G : MultiDiGraph, routes, route_lengths, T):
         loc = random.randint(1, len(routes[n])-2)
         orig_loc = random.randint(1, len(routes[largest_path])-2)
 
-        delta = -(dist(G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc]])
-                  + dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc+1]])
-                  - dist(G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc+1]]))
+        delta = -(dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc]])
+                  + dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc+1]])
+                  - dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc+1]]))
 
         if delta < 0:
             del routes[largest_path][orig_loc]
             routes[n].insert(loc)
-            route_lengths[largest_path] += -(dist(G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc]])
-                                            + dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc+1]])
-                                             - dist(G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc+1]]))
-            route_lengths[n] += -(dist(G.nodes[routes[n][loc-1]], G.nodes[routes[n][loc]])
-                                  - dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes][n][loc-1])
-                                  - dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[n][loc]]))
+            route_lengths[largest_path] += -(dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc]])
+                                            + dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc+1]])
+                                             - dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc+1]]))
+            route_lengths[n] += -(dist(G, G.nodes[routes[n][loc-1]], G.nodes[routes[n][loc]])
+                                  - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes][n][loc-1])
+                                  - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[n][loc]]))
         else:
             if random.random() < exp(-delta / T):
                 del routes[largest_path][orig_loc]
                 routes[n].insert(loc)
                 route_lengths[largest_path] += -(
-                            dist(G.nodes[routes[largest_path][orig_loc - 1]], G.nodes[routes[largest_path][orig_loc]])
-                            + dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc + 1]])
-                            - dist(G.nodes[routes[largest_path][orig_loc - 1]],
+                            dist(G, G.nodes[routes[largest_path][orig_loc - 1]], G.nodes[routes[largest_path][orig_loc]])
+                            + dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc + 1]])
+                            - dist(G, G.nodes[routes[largest_path][orig_loc - 1]],
                                    G.nodes[routes[largest_path][orig_loc + 1]]))
-                route_lengths[n] += -(dist(G.nodes[routes[n][loc - 1]], G.nodes[routes[n][loc]])
-                                      - dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes][n][loc - 1])
-                                      - dist(G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[n][loc]]))
+                route_lengths[n] += -(dist(G, G.nodes[routes[n][loc - 1]], G.nodes[routes[n][loc]])
+                                      - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes][n][loc - 1])
+                                      - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[n][loc]]))
 
 def gen_route_from_pure(G, pure_routes):
     routes = [[] for _ in range(len(pure_routes))]
