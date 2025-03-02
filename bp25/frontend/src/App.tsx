@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Backend API URL - adjust as needed
+// Backend API URL
 const API_BASE_URL = 'http://localhost:5000';
 
 // Fixed bounding box size (in percentage of the map view)
@@ -78,9 +78,9 @@ function FixedBoundingBox({ onBoundsChange }: { onBoundsChange: (bounds: [[numbe
   ) : null;
 }
 
-// Add this new component after the FixedBoundingBox component
 function GraphVisualization({ graphData }: { graphData: any }) {
   const map = useMap();
+  const legendControlRef = useRef<L.Control | null>(null);
   
   useEffect(() => {
     if (!graphData || !graphData.nodes || !graphData.edges) return;
@@ -92,12 +92,25 @@ function GraphVisualization({ graphData }: { graphData: any }) {
       }
     });
     
+    // Remove previous legend control if it exists
+    if (legendControlRef.current) {
+      map.removeControl(legendControlRef.current);
+      legendControlRef.current = null;
+    }
+    
     // Add nodes
     const nodeMarkers: {[key: string]: L.CircleMarker} = {};
     graphData.nodes.forEach((node: any) => {
-      // Make street nodes darker but with moderate size
-      const color = node.type === 'building' ? 'blue' : 
-                   node.type === 'projection' ? 'green' : '#333';
+      // Determine node color based on route assignment
+      let color;
+      if (node.route_color) {
+        // Use the route color if node is part of a route
+        color = node.route_color;
+      } else {
+        // Otherwise use default colors based on node type
+        color = node.type === 'building' ? 'blue' : 
+                node.type === 'projection' ? 'green' : '#333';
+      }
       
       const radius = node.type === 'building' ? 4 : 
                     node.type === 'projection' ? 2.5 : 3;
@@ -113,6 +126,13 @@ function GraphVisualization({ graphData }: { graphData: any }) {
         fillOpacity: 0.8
       }).addTo(map);
       
+      // Add popup with node information
+      if (node.route_id) {
+        marker.bindPopup(`Node: ${node.id}<br>Type: ${node.type}<br>Route: ${node.route_id}`);
+      } else {
+        marker.bindPopup(`Node: ${node.id}<br>Type: ${node.type}`);
+      }
+      
       nodeMarkers[node.id] = marker;
     });
     
@@ -122,8 +142,16 @@ function GraphVisualization({ graphData }: { graphData: any }) {
       const targetNode = graphData.nodes.find((n: any) => n.id === edge.target);
       
       if (sourceNode && targetNode) {
-        // Make connections darker but with moderate thickness
-        const color = edge.type === 'perpendicular' ? '#800080' : '#444';
+        // Determine edge color
+        let color;
+        if (edge.route_color) {
+          // Use route color if edge is part of a route
+          color = edge.route_color;
+        } else {
+          // Otherwise use default colors
+          color = edge.type === 'perpendicular' ? '#800080' : '#444';
+        }
+        
         const weight = edge.type === 'perpendicular' ? 2 : 1.5;
         
         L.polyline([[sourceNode.lat, sourceNode.lng], [targetNode.lat, targetNode.lng]], {
@@ -133,6 +161,43 @@ function GraphVisualization({ graphData }: { graphData: any }) {
         }).addTo(map);
       }
     });
+    
+    // Add route information to the legend if routes exist
+    if (graphData.routes && graphData.routes.length > 0) {
+      // Create a legend control
+      const legendControl = new L.Control({ position: 'bottomright' });
+      
+      legendControl.onAdd = function() {
+        const div = L.DomUtil.create('div', 'info legend');
+        div.style.backgroundColor = 'white';
+        div.style.padding = '10px';
+        div.style.borderRadius = '5px';
+        div.style.boxShadow = '0 0 5px rgba(0,0,0,0.2)';
+        
+        div.innerHTML = '<h4>Routes</h4>';
+        
+        graphData.routes.forEach((route: any) => {
+          div.innerHTML += `
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+              <div style="width: 15px; height: 15px; background-color: ${route.color}; margin-right: 5px;"></div>
+              <span>Route ${route.id} (${route.length} nodes)</span>
+            </div>
+          `;
+        });
+        
+        return div;
+      };
+      
+      legendControl.addTo(map);
+      legendControlRef.current = legendControl;
+    }
+    
+    // Cleanup function to remove the legend when component unmounts
+    return () => {
+      if (legendControlRef.current) {
+        map.removeControl(legendControlRef.current);
+      }
+    };
     
   }, [map, graphData]);
   

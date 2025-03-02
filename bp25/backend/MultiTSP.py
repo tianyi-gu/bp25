@@ -1,7 +1,14 @@
 import networkx as nx
 from networkx import MultiDiGraph
-from create_graph import create_graph
 import heapq
+
+# Use conditional import to handle both direct execution and package import
+try:
+    # When imported as part of the package
+    from bp25.backend.create_graph import create_graph
+except ImportError:
+    # When run directly
+    from create_graph import create_graph
 
 
 def nearest_unvisited_node(grf: MultiDiGraph, start, visited):
@@ -20,7 +27,7 @@ def nearest_unvisited_node(grf: MultiDiGraph, start, visited):
         except:
             pass
 
-        print(curr_dist, curr_node)
+        # print(curr_dist, curr_node)
 
         # If this node is a building and not yet visited, we've found a candidate.
         if (curr_node not in visited) and (grf.nodes[curr_node].get("node_type") == "building"):
@@ -49,7 +56,8 @@ def nearest_unvisited_node(grf: MultiDiGraph, start, visited):
                 try:
                     heapq.heappush(pq, (new_dist, str(next_node)))
                 except:
-                    print(new_dist, next_node)
+                    # print(new_dist, next_node)
+                    pass
     # If no unvisited building is found:
     return None
 
@@ -97,7 +105,13 @@ def get_init_solution(grf: MultiDiGraph, starting_pts):
         # Mark all newly added nodes as visited.
         visited.update(extension)
 
-    return routes, route_lengths
+    # Create a mapping from node to route, only including nodes that are actually in the routes
+    node_to_route = {}
+    for route_id, nodes in routes.items():
+        for node in nodes:
+            node_to_route[node] = route_id
+
+    return routes, route_lengths, node_to_route
 
 
 # Example usage:
@@ -118,7 +132,7 @@ if __name__ == "__main__":
     starting_pts = random.sample([n for n, dat in grf.nodes(data=True) if dat.get('node_type') == 'building'], 5)
 
     print("Getting Routes")
-    routes, route_lengths = get_init_solution(grf, starting_pts)
+    routes, route_lengths, node_to_route = get_init_solution(grf, starting_pts)
     for start, route in routes.items():
         print(f"Route starting at {start}: {route}")
         print(f"Total length: {route_lengths[start]}")
