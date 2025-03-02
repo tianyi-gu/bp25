@@ -420,7 +420,7 @@ async function findHighestRiskLocation(lat: number, lng: number, radius: number 
   } catch (error) {
     console.error("Error loading or parsing CSV:", error);
     
-    // Sample data for Pacific Palisades area
+    // NRI data taken specifically for Pacific Palisades area
     const sampleNRIData = [
       {
         CENSUS_TRACT_ID: "06037702200",
