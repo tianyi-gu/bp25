@@ -32,7 +32,7 @@ def get_closest_perp(G, point):
     perpendicular_line = LineString([point, projection_point])
 
     # return u, v, key, perpendicular_line, projection_point, edge_geom
-    return perpendicular_line, projection_point
+    return perpendicular_line, projection_point, u, v
 
 
 def add_perp(G_combined, building_node_id):
@@ -46,18 +46,36 @@ def add_perp(G_combined, building_node_id):
 
     # Find nearest street edge and compute the perpendicular line.
     # u, v, key, perp_line, proj_point, edge_geom = get_nearest_edge_perpendicular_line(G_combined, building_point)
-    perp_line, proj_point = get_closest_perp(G_combined, building_point)
+
+    # for node, dat in G_combined.nodes(data=True):
+    #     if "x" not in dat:
+    #         print(node)
+    #         print(dat)
+    #         exit(0)
+
+    perp_line, proj_point, u, v = get_closest_perp(G_combined, building_point)
+
 
     # Create a new node for the projection point.
     # Use a unique id (e.g., a negative number or use a naming scheme).
     projection_node_id = f"proj_{building_node_id}"
     G_combined.add_node(projection_node_id, x=proj_point.x, y=proj_point.y, node_type='projection')
 
+    G_combined.remove_edge(u, v)
+    if G_combined.has_edge(v, u):
+        G_combined.remove_edge(v, u)
+    distU = ((proj_point.x - G_combined.nodes[u]["x"]) ** 2 + (proj_point.y - G_combined.nodes[u]["y"]) ** 2) ** 0.5
+    distV = ((proj_point.x - G_combined.nodes[v]["x"]) ** 2 + (proj_point.y - G_combined.nodes[v]["y"]) ** 2) ** 0.5
+
+    G_combined.add_edge(projection_node_id, v, length=distV)
+    G_combined.add_edge(v, projection_node_id, length=distV)
+    G_combined.add_edge(projection_node_id, u, length=distU)
+    G_combined.add_edge(u, projection_node_id , length=distU)
+
     return building_node_id, projection_node_id, perp_line.length, perp_line
 
 
-def create_graph(bounding_coords, plot=False):
-
+def create_graph(bounding_coords):
     north, south, east, west = bounding_coords[0], bounding_coords[1], bounding_coords[2], bounding_coords[3]
 
     # Download the street network (all road types) using correct parameter order
@@ -90,8 +108,8 @@ def create_graph(bounding_coords, plot=False):
     # For each building centroid, add it as a node and connect it to the nearest street node
     for idx, row in buildings.iterrows():
         iterrr += 1
-        # if (iterrr % 100 == 0):
-        #     print(iterrr)
+        if (iterrr % 100 == 0):
+            print(iterrr)
         centroid = row['centroid']
 
         # Create a unique node id (e.g., negative id)
@@ -107,25 +125,35 @@ def create_graph(bounding_coords, plot=False):
 
     for building_node_id, projection_node_id, leng, perp_line in edges_to_add:
         G_combined.add_edge(building_node_id, projection_node_id,
-                            length=0,
+                            length=1e-10,
                             geometry=perp_line,
                             is_perpendicular_edge=True)
         G_combined.add_edge(projection_node_id, building_node_id,
-                            length=0,
+                            length=1e-10,
                             geometry=perp_line,
                             is_perpendicular_edge=True)
 
     # print([n for n in G_combined.neighbors(-1)])
     # print("Added building centroids as nodes and connected them to the street network.")
 
-    # Plot the combined graph: For visualization, we can plot street nodes and color building nodes differently.
-    if plot:
-        ox.plot_graph(G_combined, node_size=10, show=True, close=False)
-
     return G_combined
+
+
+# Plot the combined graph: For visualization, we can plot street nodes and color building nodes differently.
+def display_graph(G, save=False):
+    node_colors = ['royalblue' if G.nodes[node].get('node_type') == 'building' else 'slategray' for node in G.nodes]
+    ox.plot_graph(G, node_size=10, show=True, close=False, save=save, filepath='graph.png', bgcolor='white', node_color=node_colors, edge_color='black')
 
 
 if __name__ == '__main__':
     north, south, east, west = 34.1418976, 34.13, -118.1330033, -118.14
     bbox = (north, south, east, west)
-    create_graph(bbox)
+    G_combined = create_graph(bbox)
+    display_graph(G_combined, save=True)
+
+    for node, dat in G_combined.nodes(data=True):
+        if dat.get('node_type') == 'projection':
+            for nbr in G_combined.neighbors(node):
+                print(nbr, end=" ")
+            print()
+        

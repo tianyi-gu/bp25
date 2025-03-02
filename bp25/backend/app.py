@@ -24,7 +24,7 @@ def process_allocation():
         
         # Create graph using the provided bounding box
         # use plot=True to visualize the graph
-        graph = create_graph(bbox, plot=False)
+        graph = create_graph(bbox)
         
         # Convert graph to a format suitable for frontend visualization
         nodes_data = []
