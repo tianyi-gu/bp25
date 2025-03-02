@@ -20,7 +20,7 @@ def nearest_unvisited_node(grf: MultiDiGraph, start, visited):
         except:
             pass
 
-        print(curr_dist, curr_node)
+        # print(curr_dist, curr_node)
 
         # If this node is a building and not yet visited, we've found a candidate.
         if (curr_node not in visited) and (grf.nodes[curr_node].get("node_type") == "building"):
@@ -49,7 +49,8 @@ def nearest_unvisited_node(grf: MultiDiGraph, start, visited):
                 try:
                     heapq.heappush(pq, (new_dist, str(next_node)))
                 except:
-                    print(new_dist, next_node)
+                    # print(new_dist, next_node)
+                    pass
     # If no unvisited building is found:
     return None
 
