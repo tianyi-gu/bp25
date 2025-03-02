@@ -1,0 +1,31 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>OSM Map</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+            #map { height: 600px; width: 100%; }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <script>
+            var map = L.map('map').setView([34.1359488, -118.13650165], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            var bounds = L.latLngBounds(
+                [[34.13, -118.1330033], [34.1418976, -118.14]]
+            );
+            
+            L.rectangle(bounds, {color: "red", weight: 1}).addTo(map);
+            map.fitBounds(bounds);
+        </script>
+    </body>
+    </html>
+    
