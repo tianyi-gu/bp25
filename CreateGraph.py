@@ -9,12 +9,12 @@ def create_graph(bounding_coords):
     north, south, east, west = bounding_coords[0], bounding_coords[1], bounding_coords[2], bounding_coords[3]
 
     # Download the street network (all road types) using correct parameter order
-    G = ox.graph_from_bbox((north, south, east, west), network_type='all')
+    G = ox.graph_from_bbox((west, south, east, north), network_type='all')
 
     print("Downloaded street network.")
 
     # Download building footprints in the same area as a GeoDataFrame
-    buildings = ox.features_from_bbox((north, south, east, west), tags={'building': True})
+    buildings = ox.features_from_bbox((west, south, east, north), tags={'building': True})
     print("Downloaded building footprints.")
 
     # Compute centroids of each building footprint
