@@ -23,7 +23,7 @@ def process_allocation():
         
         # Create graph using the provided bounding box
         # use plot=True to visualize the graph
-        graph = create_graph(bbox, plot=False)
+        graph = create_graph(bbox)
         
         # placeholder for allocation algorithm
         
