@@ -100,6 +100,7 @@ def get_init_solution(grf: MultiDiGraph, starting_pts):
     return routes, route_lengths
 
 
+
 # Example usage:
 if __name__ == "__main__":
     # Assume create_graph() creates a networkx.MultiDiGraph with proper "node_type" attributes
