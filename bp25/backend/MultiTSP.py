@@ -111,68 +111,83 @@ def dist(G, a, b):
 def anneal(G : MultiDiGraph, routes, route_lengths, T):
     #here, routes are pure routes (all buildings)
     import random
+
+    # Reverse a subsegment within one route with probability 0.2.
     if random.random() < 0.2:
-        #reverse range
-        n = random.sample(routes.keys(), 1)[0]
-        l = random.randint(1, len(routes[n])-2)
-        r = random.randint(l, len(routes[n])-2)
+        # Choose a random route key.
+        route_key = random.choice(list(routes.keys()))
+        route = routes[route_key]
+        L = len(route)
+        # Ensure the route is long enough to reverse a nontrivial segment.
+        if L >= 4:
+            # Choose indices l and r so that 0 < l < r < L-1.
+            l = random.randint(1, L - 3)
+            r = random.randint(l + 1, L - 2)
 
-        delta = -(dist(G, routes[n][r], routes[n][min(r+1, len(routes)-1)]) + dist(G, routes[n][l-1], routes[n][l])) \
-                + (dist(G, routes[n][l-1], routes[n][r]) +
-                   (dist(G, routes[n][l], routes[n][r+1]) if r+1 != n else 0))
+            # Calculate change in route length if we reverse the segment route[l:r+1].
+            # Edges to be removed: between route[l-1] and route[l], and between route[r] and route[r+1].
+            removed = dist(G, route[l - 1], route[l]) + dist(G, route[r], route[r + 1])
+            # Edges to be added: between route[l-1] and route[r], and between route[l] and route[r+1].
+            added = dist(G, route[l - 1], route[r]) + dist(G, route[l], route[r + 1])
+            delta = added - removed
 
-        if delta < 0:
-            routes[n][l:r+1] = routes[n][r:l-1:-1]
-            route_lengths[n] += delta
-        else:
-            if random.random() < exp(-delta / T):
-                routes[n][l:r + 1] = routes[n][r:l - 1:-1]
-                route_lengths[n] += delta
+            # Accept the move if it improves or probabilistically if not.
+            if delta < 0 or random.random() < exp(-delta / T):
+                # Reverse the subsegment.
+                routes[route_key][l:r + 1] = routes[route_key][l:r + 1][::-1]
+                route_lengths[route_key] += delta
 
+    # Otherwise, perform a move of a node between routes.
     else:
-        #take smth from largest path, move to another path in a random loc
-
-        largest_path = max(route_lengths, key=lambda pt: route_lengths[pt])
+        # Identify the route with the largest current length.
+        largest_key = max(route_lengths, key=lambda k: route_lengths[k])
+        # With probability 0.7, choose a random destination route; otherwise, use the largest route.
         if random.random() < 0.7:
-            n = random.sample(routes.keys(), 1)[0]
+            dest_key = random.choice(list(routes.keys()))
         else:
-            n = largest_path
-        loc = random.randint(1, len(routes[n])-2)
-        orig_loc = random.randint(1, len(routes[largest_path])-2)
+            dest_key = largest_key
 
-        delta = -(dist(G, routes[largest_path][orig_loc-1], routes[largest_path][orig_loc])
-                  + dist(G, routes[largest_path][orig_loc], routes[largest_path][orig_loc+1])
-                  - dist(G, routes[largest_path][orig_loc-1], routes[largest_path][orig_loc+1]))
+        # For safety, ensure the source route (largest) has at least 3 nodes (so that we can remove one from its interior).
+        if len(routes[largest_key]) >= 3:
+            # Choose a random index (not the first or last) in the largest route to remove.
+            orig_idx = random.randint(1, len(routes[largest_key]) - 2)
+            node_to_move = routes[largest_key][orig_idx]
 
-        if delta < 0:
-            route_lengths[largest_path] += -(
-                    dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc])
-                    + dist(G, routes[largest_path][orig_loc], routes[largest_path][orig_loc + 1])
-                    - dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc + 1])
-            )
-            route_lengths[n] += -(
-                    dist(G, routes[n][loc - 1], routes[n][loc])
-                    - dist(G, routes[largest_path][orig_loc], routes[n][loc - 1])
-                    - dist(G, routes[largest_path][orig_loc], routes[n][loc])
-            )
-            routes[n].insert(loc, routes[largest_path][orig_loc])
-            del routes[largest_path][orig_loc]
+            # Choose a random insertion index in the destination route (not at the very beginning or end).
+            dest_route = routes[dest_key]
+            if len(dest_route) < 2:
+                dest_idx = 1
+            else:
+                dest_idx = random.randint(1, len(dest_route) - 1)
 
-        else:
-            if random.random() < exp(-delta / T):
-                route_lengths[largest_path] += -(
-                        dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc])
-                        + dist(G, routes[largest_path][orig_loc], routes[largest_path][orig_loc + 1])
-                        - dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc + 1])
-                )
-                route_lengths[n] += -(
-                        dist(G, routes[n][loc - 1], routes[n][loc])
-                        - dist(G, routes[largest_path][orig_loc], routes[n][loc - 1])
-                        - dist(G, routes[largest_path][orig_loc], routes[n][loc])
-                )
-                routes[n].insert(loc, routes[largest_path][orig_loc])
-                del routes[largest_path][orig_loc]
+            # Calculate the change in the source route's length (removing the node):
+            # Removal: remove edges (prev -> node) and (node -> next)
+            # Addition: add edge (prev -> next)
+            source_route = routes[largest_key]
+            removed_source = dist(G, source_route[orig_idx - 1], source_route[orig_idx]) \
+                             + dist(G, source_route[orig_idx], source_route[orig_idx + 1])
+            added_source = dist(G, source_route[orig_idx - 1], source_route[orig_idx + 1])
+            delta_remove = added_source - removed_source  # negative if removal shortens the route
 
+            # Calculate the change in the destination route's length (inserting the node):
+            # Removal: remove edge (dest_route[dest_idx-1] -> dest_route[dest_idx])
+            # Addition: add edges (dest_route[dest_idx-1] -> node) and (node -> dest_route[dest_idx])
+            removed_dest = dist(G, dest_route[dest_idx - 1], dest_route[dest_idx])
+            added_dest = dist(G, dest_route[dest_idx - 1], node_to_move) \
+                         + dist(G, node_to_move, dest_route[dest_idx])
+            delta_insert = added_dest - removed_dest
+
+            delta = delta_remove + delta_insert
+
+            # Accept the move if improvement or probabilistically.
+            if delta < 0 or random.random() < exp(-delta / T):
+                # Update route lengths.
+                route_lengths[largest_key] += delta_remove
+                route_lengths[dest_key] += delta_insert
+                # Remove the node from the source route.
+                del routes[largest_key][orig_idx]
+                # Insert it into the destination route at dest_idx.
+                routes[dest_key].insert(dest_idx, node_to_move)
 
 
 def gen_route_from_pure(G, pure_routes):
