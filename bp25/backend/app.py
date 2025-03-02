@@ -34,13 +34,12 @@ def process_allocation():
     
     try:
         # Extract bounding box coordinates
-        bbox = data['bbox']  # [north, south, east, west]
+        bbox = data['bbox']
         location_name = data.get('location_name', 'Unknown location')
         
         # Get fire data if provided
         fires = data.get('fires', [])
         
-        # Create graph using the provided bounding box
         graph = create_graph(bbox)
         
         # Remove nodes that are too close to fires
@@ -52,7 +51,6 @@ def process_allocation():
                 if 'x' not in node_data or 'y' not in node_data:
                     continue
                     
-                # Check distance to each fire
                 for fire in fires:
                     fire_lat = fire.get('latitude')
                     fire_lng = fire.get('longitude')
@@ -60,13 +58,11 @@ def process_allocation():
                     if fire_lat is None or fire_lng is None:
                         continue
                         
-                    # Convert to float if needed
                     if isinstance(fire_lat, str):
                         fire_lat = float(fire_lat)
                     if isinstance(fire_lng, str):
                         fire_lng = float(fire_lng)
                     
-                    # Calculate distance between node and fire
                     distance = ((node_data['y'] - fire_lat) ** 2 + 
                                (node_data['x'] - fire_lng) ** 2) ** 0.5
                     
@@ -85,7 +81,6 @@ def process_allocation():
         # Get building nodes for starting points
         building_nodes = [n for n, dat in graph.nodes(data=True) if dat.get('node_type') == 'building']
         
-        # Use up to 5 random building nodes as starting points
         num_routes = min(5, len(building_nodes))
         if num_routes > 0:
             starting_pts = random.sample(building_nodes, num_routes)
@@ -93,13 +88,11 @@ def process_allocation():
             # Get routes using MultiTSP
             routes, pure_routes, route_lengths = get_actual_solution(graph, starting_pts)
             
-            # Convert any numpy types to Python native types for route keys
             routes_converted = {}
             pure_routes_converted = {}
             route_lengths_converted = {}
 
             for key in routes:
-                # Convert numpy types to Python native types
                 python_key = float(key) if hasattr(key, 'dtype') else key
                 routes_converted[python_key] = routes[key]
                 pure_routes_converted[python_key] = pure_routes[key]
@@ -109,7 +102,6 @@ def process_allocation():
             pure_routes = pure_routes_converted
             route_lengths = route_lengths_converted
             
-            # Create node_to_route mapping
             node_to_route = {}
             for route_id, nodes in routes.items():
                 for node in nodes:
@@ -118,27 +110,20 @@ def process_allocation():
             # Generate colors for each route
             route_colors = {}
             for route_id in routes.keys():
-                # Generate vibrant colors by using higher saturation and value
-                # Avoid very light colors by ensuring RGB values aren't all too high
+              
                 while True:
                     # Generate a random color with more saturated values
                     r = random.randint(20, 180)
                     g = random.randint(20, 180)
                     b = random.randint(20, 180)
                     
-                    # Ensure at least one component is strong (for vibrancy)
                     if max(r, g, b) < 120:
                         continue
                         
-                    # Ensure the color isn't too light overall (lower threshold)
+                    # Make sure the color isn't too light overall (lower threshold)
                     if (r + g + b) > 450:
                         continue
-                        
-                    # Avoid grays (where all components are too similar)
-                    if abs(r - g) < 30 and abs(g - b) < 30 and abs(r - b) < 30:
-                        continue
-                        
-                    # Convert to hex
+            
                     color = "#{:02x}{:02x}{:02x}".format(r, g, b)
                     route_colors[route_id] = color
                     break
@@ -148,24 +133,21 @@ def process_allocation():
             node_to_route = {}
             route_colors = {}
         
-        # After creating routes
         route_display_ids = {}
         for i, route_id in enumerate(routes.keys(), 1):
             route_display_ids[route_id] = i
         
-        # Convert graph to a format suitable for frontend visualization
         nodes_data = []
         for node_id, node_data in graph.nodes(data=True):
             if 'x' in node_data and 'y' in node_data:
                 node_type = node_data.get('node_type', 'street')
                 node_info = {
                     'id': str(node_id),
-                    'lat': node_data['y'],  # Note: y is latitude
-                    'lng': node_data['x'],  # x is longitude
+                    'lat': node_data['y'],
+                    'lng': node_data['x'],
                     'type': node_type
                 }
                 
-                # Add route information if this node is part of a route
                 if node_id in node_to_route:
                     route_id = node_to_route[node_id]
                     node_info['route_id'] = str(route_id)
@@ -173,7 +155,7 @@ def process_allocation():
                 
                 nodes_data.append(node_info)
         
-        # Extract edges (simplified - no geometry)
+        # Extract edges
         edges_data = []
         edges_with_route_color = 0
         for u, v, data in graph.edges(data=True):
@@ -218,7 +200,6 @@ def process_allocation():
             
             # If this edge has a route color and connects to a building
             if 'route_color' in edge:
-                # Check if either end is a building node
                 source_node = next((n for n in graph.nodes(data=True) if str(n[0]) == source), None)
                 target_node = next((n for n in graph.nodes(data=True) if str(n[0]) == target), None)
                 
@@ -234,7 +215,6 @@ def process_allocation():
             
             # If this edge doesn't have a route color yet
             if 'route_color' not in edge:
-                # Check if it connects to a building that's in a route but doesn't have a colored connection
                 source_id = source.lstrip('-') if source.startswith('-') else source
                 target_id = target.lstrip('-') if target.startswith('-') else target
                 
@@ -275,15 +255,13 @@ def process_allocation():
                 tags={'amenity': 'fire_station'}
             )
             
-            # Extract fire station locations
             fire_station_data = []
             if not fire_stations.empty:
                 for idx, station in fire_stations.iterrows():
-                    # Get the centroid of the geometry
                     if hasattr(station.geometry, 'centroid'):
                         point = station.geometry.centroid
                     else:
-                        point = station.geometry  # It's already a point
+                        point = station.geometry
                         
                     name = station.get('name', 'Fire Station')
                     
