@@ -1,8 +1,20 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS  
-from bp25.backend.create_graph import create_graph
+from flask_cors import CORS
+import os
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
+try:
+    from create_graph import create_graph
+    from MultiTSP import get_actual_solution
+except ImportError:
+    from bp25.backend.create_graph import create_graph
+    from bp25.backend.MultiTSP import get_actual_solution
+
 import networkx as nx
-from bp25.backend.MultiTSP import get_init_solution
 import random
 import osmnx as ox
 
@@ -25,8 +37,50 @@ def process_allocation():
         bbox = data['bbox']  # [north, south, east, west]
         location_name = data.get('location_name', 'Unknown location')
         
+        # Get fire data if provided
+        fires = data.get('fires', [])
+        
         # Create graph using the provided bounding box
         graph = create_graph(bbox)
+        
+        # Remove nodes that are too close to fires
+        if fires and len(fires) > 0:
+            DANGER_RADIUS = 0.0005
+            nodes_to_remove = []
+            
+            for node_id, node_data in graph.nodes(data=True):
+                if 'x' not in node_data or 'y' not in node_data:
+                    continue
+                    
+                # Check distance to each fire
+                for fire in fires:
+                    fire_lat = fire.get('latitude')
+                    fire_lng = fire.get('longitude')
+                    
+                    if fire_lat is None or fire_lng is None:
+                        continue
+                        
+                    # Convert to float if needed
+                    if isinstance(fire_lat, str):
+                        fire_lat = float(fire_lat)
+                    if isinstance(fire_lng, str):
+                        fire_lng = float(fire_lng)
+                    
+                    # Calculate distance between node and fire
+                    distance = ((node_data['y'] - fire_lat) ** 2 + 
+                               (node_data['x'] - fire_lng) ** 2) ** 0.5
+                    
+                    # If node is too close to any fire, mark for removal
+                    if distance < DANGER_RADIUS:
+                        nodes_to_remove.append(node_id)
+                        break
+            
+            # Remove the marked nodes from the graph
+            for node_id in nodes_to_remove:
+                if graph.has_node(node_id):
+                    graph.remove_node(node_id)
+            
+            print(f"Removed {len(nodes_to_remove)} nodes due to proximity to fires")
         
         # Get building nodes for starting points
         building_nodes = [n for n, dat in graph.nodes(data=True) if dat.get('node_type') == 'building']
@@ -37,8 +91,30 @@ def process_allocation():
             starting_pts = random.sample(building_nodes, num_routes)
             
             # Get routes using MultiTSP
-            routes, route_lengths, node_to_route = get_init_solution(graph, starting_pts)
+            routes, pure_routes, route_lengths = get_actual_solution(graph, starting_pts)
             
+            # Convert any numpy types to Python native types for route keys
+            routes_converted = {}
+            pure_routes_converted = {}
+            route_lengths_converted = {}
+
+            for key in routes:
+                # Convert numpy types to Python native types
+                python_key = float(key) if hasattr(key, 'dtype') else key
+                routes_converted[python_key] = routes[key]
+                pure_routes_converted[python_key] = pure_routes[key]
+                route_lengths_converted[python_key] = route_lengths[key]
+
+            routes = routes_converted
+            pure_routes = pure_routes_converted
+            route_lengths = route_lengths_converted
+            
+            # Create node_to_route mapping
+            node_to_route = {}
+            for route_id, nodes in routes.items():
+                for node in nodes:
+                    node_to_route[node] = route_id
+
             # Generate colors for each route
             route_colors = {}
             for route_id in routes.keys():
