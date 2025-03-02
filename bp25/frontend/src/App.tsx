@@ -79,7 +79,8 @@ function GraphVisualization({ graphData, fires }: { graphData: any, fires?: any[
     if (!graphData || !graphData.nodes || !graphData.edges) return;
     
     map.eachLayer((layer) => {
-      if (layer instanceof L.Polyline || (layer instanceof L.CircleMarker)) {
+      if ((layer instanceof L.Polyline && !(layer instanceof L.Rectangle)) || 
+          (layer instanceof L.CircleMarker)) {
         map.removeLayer(layer);
       }
     });
