@@ -5,3 +5,4 @@ __pycache__
 instance/
 .webassets-cache
 cache/
+bp25/frontend/public/data/NRI_Table_CensusTracts/NRI_Table_CensusTracts.csv
