@@ -74,6 +74,16 @@ def create_graph(bounding_coords):
 
     # Download the street network (all road types) using correct parameter order
     G = ox.graph_from_bbox((west, south, east, north), network_type='all')
+
+    edges_to_add = []
+
+    for edge in G.edges:
+        if not G.has_edge(edge[1], edge[0]):
+            edges_to_add.append((edge[1], edge[0], edge[2]))
+
+    for edge in edges_to_add:
+        G.add_edge(edge[0], edge[1], length=edge[2])
+
     # print(G.nodes)
     # print("Downloaded street network.")
 
