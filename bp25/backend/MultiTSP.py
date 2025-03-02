@@ -252,7 +252,7 @@ def gen_route_from_pure(G, pure_routes):
 
 def simulated_annealing(G, pure_routes, route_lengths, T=10):
     c = 0.9
-    for i in range(10000):
+    for i in range(1000):
         if i % 100 == 0:
             print(i)
             print(route_lengths)
@@ -262,15 +262,18 @@ def simulated_annealing(G, pure_routes, route_lengths, T=10):
 
 def get_actual_solution(G, starting_pts):
     routes, route_lengths, pure_routes = get_init_solution(G, starting_pts)
+    old_max = max(route_lengths.values())
     new_pure_routes, new_route_lengths = simulated_annealing(G, pure_routes, route_lengths)
+    new_max = max(route_lengths.values())
 
     new_routes, _ = gen_route_from_pure(G, new_pure_routes)
     for pt in starting_pts:
         new_pure_routes[pt].append(pt)
-        lst = new_routes[-1]
+        lst = new_routes[pt][-1]
         new_routes[pt].pop()
         new_routes[pt].extend(shortest_path(G, lst, pt))
-        
+
+    print(new_max / old_max)
     return new_routes, new_pure_routes, new_route_lengths
 
 # Example usage:
