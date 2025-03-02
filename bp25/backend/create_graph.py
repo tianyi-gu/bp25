@@ -4,7 +4,10 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 from shapely.geometry import Point, LineString
 from scipy.spatial import cKDTree
+import warnings
 
+# Suppress specific runtime warnings from Shapely
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="shapely")
 
 def get_closest_perp(G, point):
     """
@@ -45,16 +48,7 @@ def add_perp(G_combined, building_node_id):
     building_point = Point(building_data['x'], building_data['y'])
 
     # Find nearest street edge and compute the perpendicular line.
-    # u, v, key, perp_line, proj_point, edge_geom = get_nearest_edge_perpendicular_line(G_combined, building_point)
-
-    # for node, dat in G_combined.nodes(data=True):
-    #     if "x" not in dat:
-    #         print(node)
-    #         print(dat)
-    #         exit(0)
-
     perp_line, proj_point, u, v = get_closest_perp(G_combined, building_point)
-
 
     # Create a new node for the projection point.
     # Use a unique id (e.g., a negative number or use a naming scheme).
@@ -70,7 +64,7 @@ def add_perp(G_combined, building_node_id):
     G_combined.add_edge(projection_node_id, v, length=distV)
     G_combined.add_edge(v, projection_node_id, length=distV)
     G_combined.add_edge(projection_node_id, u, length=distU)
-    G_combined.add_edge(u, projection_node_id , length=distU)
+    G_combined.add_edge(u, projection_node_id, length=distU)
 
     return building_node_id, projection_node_id, perp_line.length, perp_line
 
@@ -88,6 +82,10 @@ def create_graph(bounding_coords):
     # print(buildings.geometry.centroid)
     # print("Downloaded building footprints.")
 
+    # Download fire stations in the same area as a GeoDataFrame
+    # fire_stations = ox.features_from_bbox((west, south, east, north), tags={'amenity': 'fire_station'})
+    # fire_station_coords = set((row.geometry.centroid.x, row.geometry.centroid.y) for idx, row in fire_stations.iterrows())
+
     # Determine an appropriate UTM CRS for the buildings
     buildings_crs = buildings.to_crs(3857)
     buildings_crs['centroid'] = buildings_crs.geometry.centroid
@@ -104,13 +102,20 @@ def create_graph(bounding_coords):
     building_node_ids = []
     edges_to_add = []
 
-    iterrr = 0
+    # iterrr = 0
     # For each building centroid, add it as a node and connect it to the nearest street node
     for idx, row in buildings.iterrows():
-        iterrr += 1
-        if (iterrr % 100 == 0):
-            print(iterrr)
+        # iterrr += 1
+        # if (iterrr % 100 == 0):
+        #     print(iterrr)
         centroid = row['centroid']
+
+        # Check if the building is a fire station
+        # if (centroid.x, centroid.y) in fire_station_coords:
+        #     node_type = 'fire_station'
+        # else:
+        #     node_type = 'building'
+        node_type = 'building'
 
         # Create a unique node id (e.g., negative id)
         bnode = next_id
@@ -118,7 +123,7 @@ def create_graph(bounding_coords):
         building_node_ids.append(bnode)
 
         # Add the building centroid as a node with attributes: geometry, x, y, and a custom tag
-        G_combined.add_node(bnode, x=centroid.x, y=centroid.y, node_type='building')
+        G_combined.add_node(bnode, x=centroid.x, y=centroid.y, node_type=node_type)
         building_node_id, projection_node_id, leng, perp_line = add_perp(G_combined, bnode)
         edges_to_add.append((building_node_id, projection_node_id, leng, perp_line))
 
@@ -141,7 +146,7 @@ def create_graph(bounding_coords):
 
 # Plot the combined graph: For visualization, we can plot street nodes and color building nodes differently.
 def display_graph(G, save=False):
-    node_colors = ['royalblue' if G.nodes[node].get('node_type') == 'building' else 'slategray' for node in G.nodes]
+    node_colors = ['royalblue' if G.nodes[node].get('node_type') == 'building' else 'red' if G.nodes[node].get('node_type') == 'fire_station' else 'slategray' for node in G.nodes]
     ox.plot_graph(G, node_size=10, show=True, close=False, save=save, filepath='graph.png', bgcolor='white', node_color=node_colors, edge_color='black')
 
 
@@ -150,10 +155,3 @@ if __name__ == '__main__':
     bbox = (north, south, east, west)
     G_combined = create_graph(bbox)
     display_graph(G_combined, save=True)
-
-    for node, dat in G_combined.nodes(data=True):
-        if dat.get('node_type') == 'projection':
-            for nbr in G_combined.neighbors(node):
-                print(nbr, end=" ")
-            print()
-        
