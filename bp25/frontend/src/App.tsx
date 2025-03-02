@@ -164,7 +164,7 @@ function GraphVisualization({ graphData }: { graphData: any }) {
     
     // Add route information to the legend if routes exist
     if (graphData.routes && graphData.routes.length > 0) {
-      // Create a legend control
+      // Create a legend control if it doesn't exist
       const legendControl = new L.Control({ position: 'bottomright' });
       
       legendControl.onAdd = function() {
@@ -172,18 +172,34 @@ function GraphVisualization({ graphData }: { graphData: any }) {
         div.style.backgroundColor = 'white';
         div.style.padding = '10px';
         div.style.borderRadius = '5px';
-        div.style.boxShadow = '0 0 5px rgba(0,0,0,0.2)';
+        div.style.boxShadow = '0 0 15px rgba(0,0,0,0.2)';
         
-        div.innerHTML = '<h4>Routes</h4>';
+        div.innerHTML = '<h4 style="margin:0 0 5px 0">Legend</h4>';
         
-        graphData.routes.forEach((route: any) => {
-          div.innerHTML += `
-            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-              <div style="width: 15px; height: 15px; background-color: ${route.color}; margin-right: 5px;"></div>
-              <span>Route ${route.id} (${route.length} nodes)</span>
-            </div>
-          `;
-        });
+        // Add node type legend
+        div.innerHTML += '<div style="margin-bottom:5px;"><strong>Node Types:</strong></div>';
+        div.innerHTML += '<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:blue;margin-right:5px;"></span>Building</div>';
+        div.innerHTML += '<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:green;margin-right:5px;"></span>Projection</div>';
+        div.innerHTML += '<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#333;margin-right:5px;"></span>Street</div>';
+        
+        // Add edge type legend
+        div.innerHTML += '<div style="margin:5px 0;"><strong>Edge Types:</strong></div>';
+        div.innerHTML += '<div><span style="display:inline-block;width:12px;height:2px;background:#800080;margin-right:5px;"></span>Building-to-street</div>';
+        div.innerHTML += '<div><span style="display:inline-block;width:12px;height:2px;background:#444;margin-right:5px;"></span>Street network</div>';
+        
+        // Add route legend
+        if (graphData.routes && graphData.routes.length > 0) {
+          div.innerHTML += '<div style="margin:5px 0;"><strong>Routes:</strong></div>';
+          graphData.routes.forEach((route: any) => {
+            div.innerHTML += `<div><span style="display:inline-block;width:12px;height:12px;background:${route.color};margin-right:5px;"></span>Route ${route.display_id} (${route.length} nodes)</div>`;
+          });
+        }
+        
+        // Add fire station to legend
+        if (graphData.fire_stations && graphData.fire_stations.length > 0) {
+          div.innerHTML += '<div style="margin:5px 0;"><strong>Facilities:</strong></div>';
+          div.innerHTML += '<div><span style="display:inline-block;width:12px;height:12px;background:red;margin-right:5px;"></span>Fire Station</div>';
+        }
         
         return div;
       };
@@ -202,6 +218,37 @@ function GraphVisualization({ graphData }: { graphData: any }) {
   }, [map, graphData]);
   
   return null;
+}
+
+// Add a new component for fire station markers
+function FireStationMarkers({ stations }: { stations: any[] }) {
+  const fireIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
+  return (
+    <>
+      {stations.map(station => (
+        <Marker 
+          key={station.id} 
+          position={[station.lat, station.lng]} 
+          icon={fireIcon}
+        >
+          <Popup>
+            <div>
+              <strong>{station.name}</strong>
+              <div>Fire Station</div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  );
 }
 
 function App() {
@@ -370,6 +417,9 @@ function App() {
                   center={mapLocation} 
                   zoom={13} 
                   style={{ height: '100%', width: '100%' }}
+                  zoomDelta={0.25}
+                  zoomSnap={0.25}
+                  wheelPxPerZoomLevel={100}
                 >
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -383,6 +433,9 @@ function App() {
                   <FixedBoundingBox onBoundsChange={setBoundingBox} />
                   {allocationResult && allocationResult.graph_data && (
                     <GraphVisualization graphData={allocationResult.graph_data} />
+                  )}
+                  {allocationResult && allocationResult.fire_stations && (
+                    <FireStationMarkers stations={allocationResult.fire_stations} />
                   )}
                 </MapContainer>
               </Box>
@@ -434,32 +487,6 @@ function App() {
                   <Text mt={2}>
                     Network edges: {allocationResult.edges_count}
                   </Text>
-                  <Text mt={2} fontWeight="bold">
-                    Graph visualization is displayed on the map above.
-                  </Text>
-                  <Box mt={4}>
-                    <Text fontSize="sm">Legend:</Text>
-                    <Flex mt={1} alignItems="center">
-                      <Box w="12px" h="12px" borderRadius="full" bg="blue" mr={2}></Box>
-                      <Text fontSize="sm">Building nodes</Text>
-                    </Flex>
-                    <Flex mt={1} alignItems="center">
-                      <Box w="12px" h="12px" borderRadius="full" bg="green" mr={2}></Box>
-                      <Text fontSize="sm">Projection nodes</Text>
-                    </Flex>
-                    <Flex mt={1} alignItems="center">
-                      <Box w="12px" h="12px" borderRadius="full" bg="#333" mr={2}></Box>
-                      <Text fontSize="sm">Street nodes</Text>
-                    </Flex>
-                    <Flex mt={1} alignItems="center">
-                      <Box w="12px" h="2px" bg="#800080" mr={2}></Box>
-                      <Text fontSize="sm">Building-to-street connections</Text>
-                    </Flex>
-                    <Flex mt={1} alignItems="center">
-                      <Box w="12px" h="2px" bg="#444" mr={2}></Box>
-                      <Text fontSize="sm">Street network</Text>
-                    </Flex>
-                  </Box>
                 </Box>
               )}
             </>

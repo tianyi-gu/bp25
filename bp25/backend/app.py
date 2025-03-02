@@ -4,6 +4,7 @@ from bp25.backend.create_graph import create_graph
 import networkx as nx
 from bp25.backend.MultiTSP import get_init_solution
 import random
+import osmnx as ox
 
 app = Flask(__name__)
 CORS(app)
@@ -44,17 +45,21 @@ def process_allocation():
                 # Generate vibrant colors by using higher saturation and value
                 # Avoid very light colors by ensuring RGB values aren't all too high
                 while True:
-                    # Generate a random color
-                    r = random.randint(50, 200)
-                    g = random.randint(50, 200)
-                    b = random.randint(50, 200)
+                    # Generate a random color with more saturated values
+                    r = random.randint(20, 180)
+                    g = random.randint(20, 180)
+                    b = random.randint(20, 180)
                     
                     # Ensure at least one component is strong (for vibrancy)
-                    if max(r, g, b) < 150:
+                    if max(r, g, b) < 120:
                         continue
                         
-                    # Ensure the color isn't too light overall
-                    if (r + g + b) > 550:
+                    # Ensure the color isn't too light overall (lower threshold)
+                    if (r + g + b) > 450:
+                        continue
+                        
+                    # Avoid grays (where all components are too similar)
+                    if abs(r - g) < 30 and abs(g - b) < 30 and abs(r - b) < 30:
                         continue
                         
                     # Convert to hex
@@ -66,6 +71,11 @@ def process_allocation():
             route_lengths = {}
             node_to_route = {}
             route_colors = {}
+        
+        # After creating routes
+        route_display_ids = {}
+        for i, route_id in enumerate(routes.keys(), 1):
+            route_display_ids[route_id] = i
         
         # Convert graph to a format suitable for frontend visualization
         nodes_data = []
@@ -175,10 +185,41 @@ def process_allocation():
         for route_id, node_list in routes.items():
             routes_data.append({
                 'id': str(route_id),
+                'display_id': route_display_ids[route_id],
                 'nodes': [str(node) for node in node_list],
                 'color': route_colors[route_id],
                 'length': len(node_list)
             })
+        
+        # Find fire stations within the bounding box
+        try:
+            # Query for fire stations using OSM tags
+            fire_stations = ox.features.features_from_bbox(
+                bbox[0], bbox[1], bbox[2], bbox[3],
+                tags={'amenity': 'fire_station'}
+            )
+            
+            # Extract fire station locations
+            fire_station_data = []
+            if not fire_stations.empty:
+                for idx, station in fire_stations.iterrows():
+                    # Get the centroid of the geometry
+                    if hasattr(station.geometry, 'centroid'):
+                        point = station.geometry.centroid
+                    else:
+                        point = station.geometry  # It's already a point
+                        
+                    name = station.get('name', 'Fire Station')
+                    
+                    fire_station_data.append({
+                        'id': str(idx),
+                        'lat': point.y,
+                        'lng': point.x,
+                        'name': name
+                    })
+        except Exception as e:
+            print(f"Error fetching fire stations: {e}")
+            fire_station_data = []
         
         return jsonify({
             "status": "success",
@@ -187,6 +228,7 @@ def process_allocation():
             "nodes_count": len(graph.nodes),
             "edges_count": len(graph.edges),
             "routes_count": len(routes),
+            "fire_stations": fire_station_data,
             "graph_data": {
                 "nodes": nodes_data,
                 "edges": edges_data,
