@@ -264,6 +264,12 @@ def get_actual_solution(G, starting_pts):
     new_pure_routes, new_route_lengths = simulated_annealing(G, pure_routes, route_lengths)
 
     new_routes, _ = gen_route_from_pure(G, new_pure_routes)
+    for pt in starting_pts:
+        new_pure_routes[pt].append(pt)
+        lst = new_routes[-1]
+        new_routes[pt].pop()
+        new_routes[pt].extend(shortest_path(G, lst, pt))
+        
     return new_routes, new_pure_routes, new_route_lengths
 
 # Example usage:
