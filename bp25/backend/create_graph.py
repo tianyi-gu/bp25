@@ -56,7 +56,7 @@ def add_perp(G_combined, building_node_id):
     return building_node_id, projection_node_id, perp_line.length, perp_line
 
 
-def create_graph(bounding_coords):
+def create_graph(bounding_coords, plot=False):
 
     north, south, east, west = bounding_coords[0], bounding_coords[1], bounding_coords[2], bounding_coords[3]
 
@@ -119,7 +119,8 @@ def create_graph(bounding_coords):
     # print("Added building centroids as nodes and connected them to the street network.")
 
     # Plot the combined graph: For visualization, we can plot street nodes and color building nodes differently.
-    ox.plot_graph(G_combined, node_size=10, show=True, close=False)
+    if plot:
+        ox.plot_graph(G_combined, node_size=10, show=True, close=False)
 
     return G_combined
 
