@@ -3,6 +3,7 @@ from networkx import MultiDiGraph, shortest_path_length, shortest_path
 from create_graph import create_graph
 import heapq
 from math import *
+import random
 
 def nearest_unvisited_node(grf: MultiDiGraph, start, visited):
     # Dijkstra: initialize distances and predecessors
@@ -263,7 +264,7 @@ def get_actual_solution(G, starting_pts):
     routes, route_lengths, pure_routes = get_init_solution(G, starting_pts)
     new_pure_routes, new_route_lengths = simulated_annealing(G, pure_routes, route_lengths)
 
-    new_routes, _ = gen_route_from_pure(G, new_pure_routes)
+    new_routes, new_route_lengths = gen_route_from_pure(G, new_pure_routes)
     return new_routes, new_pure_routes, new_route_lengths
 
 # Example usage:
@@ -278,8 +279,6 @@ if __name__ == "__main__":
 
     print("Finished Creating Graph")
     # List of starting points (for instance, predetermined nodes)
-
-    import random
 
     starting_pts = random.sample([n for n, dat in grf.nodes(data=True) if dat.get('node_type') == 'building'], 5)
 
