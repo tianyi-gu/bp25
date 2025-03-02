@@ -103,20 +103,23 @@ def get_init_solution(grf: MultiDiGraph, starting_pts):
     return routes, route_lengths, pure_routes
 
 def dist(G, a, b):
-    return shortest_path_length(G, source=a, target=b)
+    try:
+        return shortest_path_length(G, source=a, target=b, weight='length')
+    except:
+        return 1e18
 
 def anneal(G : MultiDiGraph, routes, route_lengths, T):
     #here, routes are pure routes (all buildings)
     import random
     if random.random() < 0.2:
         #reverse range
-        n = random.sample(routes.keys(), 1)
-        l = random.randint(1, routes[n]-2)
-        r = random.randint(l, routes[n]-2)
+        n = random.sample(routes.keys(), 1)[0]
+        l = random.randint(1, len(routes[n])-2)
+        r = random.randint(l, len(routes[n])-2)
 
-        delta = -(dist(G, G.nodes[routes[n][r]], G.nodes[routes[n][min(r+1, len(routes)-1)]]) + dist(G, G.nodes[l-1], G.nodes[l])) \
-                + (dist(G, G.nodes[l-1], G.nodes[r]) +
-                   (dist(G, G.nodes[l], G.nodes[r+1]) if r+1 != n else 0))
+        delta = -(dist(G, routes[n][r], routes[n][min(r+1, len(routes)-1)]) + dist(G, routes[n][l-1], routes[n][l])) \
+                + (dist(G, routes[n][l-1], routes[n][r]) +
+                   (dist(G, routes[n][l], routes[n][r+1]) if r+1 != n else 0))
 
         if delta < 0:
             routes[n][l:r+1] = routes[n][r:l-1:-1]
@@ -131,37 +134,46 @@ def anneal(G : MultiDiGraph, routes, route_lengths, T):
 
         largest_path = max(route_lengths, key=lambda pt: route_lengths[pt])
         if random.random() < 0.7:
-            n = random.sample(routes.keys(), 1)
+            n = random.sample(routes.keys(), 1)[0]
         else:
             n = largest_path
         loc = random.randint(1, len(routes[n])-2)
         orig_loc = random.randint(1, len(routes[largest_path])-2)
 
-        delta = -(dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc]])
-                  + dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc+1]])
-                  - dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc+1]]))
+        delta = -(dist(G, routes[largest_path][orig_loc-1], routes[largest_path][orig_loc])
+                  + dist(G, routes[largest_path][orig_loc], routes[largest_path][orig_loc+1])
+                  - dist(G, routes[largest_path][orig_loc-1], routes[largest_path][orig_loc+1]))
 
         if delta < 0:
+            route_lengths[largest_path] += -(
+                    dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc])
+                    + dist(G, routes[largest_path][orig_loc], routes[largest_path][orig_loc + 1])
+                    - dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc + 1])
+            )
+            route_lengths[n] += -(
+                    dist(G, routes[n][loc - 1], routes[n][loc])
+                    - dist(G, routes[largest_path][orig_loc], routes[n][loc - 1])
+                    - dist(G, routes[largest_path][orig_loc], routes[n][loc])
+            )
+            routes[n].insert(loc, routes[largest_path][orig_loc])
             del routes[largest_path][orig_loc]
-            routes[n].insert(loc)
-            route_lengths[largest_path] += -(dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc]])
-                                            + dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc+1]])
-                                             - dist(G, G.nodes[routes[largest_path][orig_loc-1]], G.nodes[routes[largest_path][orig_loc+1]]))
-            route_lengths[n] += -(dist(G, G.nodes[routes[n][loc-1]], G.nodes[routes[n][loc]])
-                                  - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes][n][loc-1])
-                                  - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[n][loc]]))
+
         else:
             if random.random() < exp(-delta / T):
-                del routes[largest_path][orig_loc]
-                routes[n].insert(loc)
                 route_lengths[largest_path] += -(
-                            dist(G, G.nodes[routes[largest_path][orig_loc - 1]], G.nodes[routes[largest_path][orig_loc]])
-                            + dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[largest_path][orig_loc + 1]])
-                            - dist(G, G.nodes[routes[largest_path][orig_loc - 1]],
-                                   G.nodes[routes[largest_path][orig_loc + 1]]))
-                route_lengths[n] += -(dist(G, G.nodes[routes[n][loc - 1]], G.nodes[routes[n][loc]])
-                                      - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes][n][loc - 1])
-                                      - dist(G, G.nodes[routes[largest_path][orig_loc]], G.nodes[routes[n][loc]]))
+                        dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc])
+                        + dist(G, routes[largest_path][orig_loc], routes[largest_path][orig_loc + 1])
+                        - dist(G, routes[largest_path][orig_loc - 1], routes[largest_path][orig_loc + 1])
+                )
+                route_lengths[n] += -(
+                        dist(G, routes[n][loc - 1], routes[n][loc])
+                        - dist(G, routes[largest_path][orig_loc], routes[n][loc - 1])
+                        - dist(G, routes[largest_path][orig_loc], routes[n][loc])
+                )
+                routes[n].insert(loc, routes[largest_path][orig_loc])
+                del routes[largest_path][orig_loc]
+
+
 
 def gen_route_from_pure(G, pure_routes):
     routes = [[] for _ in range(len(pure_routes))]
@@ -177,8 +189,9 @@ def gen_route_from_pure(G, pure_routes):
 def simulated_annealing(G, pure_routes, route_lengths, T=10):
     c = 0.9
     for i in range(1000):
-        print(i)
         if i % 10 == 0:
+            print(i)
+            print(route_lengths)
             T *= c
         anneal(G, pure_routes, route_lengths, T)
     return pure_routes, route_lengths
@@ -209,6 +222,6 @@ if __name__ == "__main__":
 
     print("STARTING SIMULATED ANNEALING")
     pure_routes, route_lengths = simulated_annealing(grf, pure_routes, route_lengths)
-    for i in range(len(pure_routes)):
+    for i in pure_routes:
         print(pure_routes[i])
         print(route_lengths[i])
