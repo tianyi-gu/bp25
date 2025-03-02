@@ -121,6 +121,8 @@ def create_graph(bounding_coords):
     # Plot the combined graph: For visualization, we can plot street nodes and color building nodes differently.
     ox.plot_graph(G_combined, node_size=10, show=True, close=False)
 
+    return G_combined
+
 
 if __name__ == '__main__':
     north, south, east, west = 34.1418976, 34.13, -118.1330033, -118.14
