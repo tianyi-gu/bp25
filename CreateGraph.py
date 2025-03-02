@@ -75,7 +75,6 @@ def create_graph(bounding_coords):
         distance = centroid.distance(Point(G_combined.nodes[nearest_street_node]['x'],
                                            G_combined.nodes[nearest_street_node]['y']))
 
-        # Add edge in both directions
 
         edges_to_add.append((bnode, nearest_street_node, distance))
 
@@ -83,6 +82,8 @@ def create_graph(bounding_coords):
 
         G_combined.add_edge(bnode, nearest_street_node, length=distance, is_building_edge=True)
         G_combined.add_edge(nearest_street_node, bnode, length=distance, is_building_edge=True)
+
+    print([n for n in G_combined.neighbors(-1)])
 
     print("Added building centroids as nodes and connected them to the street network.")
 
@@ -97,7 +98,7 @@ def create_graph(bounding_coords):
 
     # Plot the combined graph
     # For visualization, we can plot street nodes and color building nodes differently.
-    fig, ax = ox.plot_graph(G_combined, node_size=10, show=False, close=False)
+    fig, ax = ox.plot_graph(G_combined, node_size=10, show=True, close=False)
 
     # Extract building nodes from the graph (those we tagged as 'building')
     # building_nodes = [n for n, data in G_combined.nodes(data=True) if data.get('node_type') == 'building']
@@ -109,7 +110,7 @@ def create_graph(bounding_coords):
     # ax.scatter(x_buildings, y_buildings, c='red', s=30, label='Building Centroid', zorder=3)
     # ax.legend()
 
-    plt.show()
+    # plt.show()
 
 if __name__ == '__main__':
     north, south, east, west = 34.1418976, 34.13, -118.1330033, -118.14
