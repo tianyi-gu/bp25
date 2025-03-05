@@ -22,7 +22,7 @@ stations = random.sample([n for n, dat in G.nodes(data=True) if dat.get('node_ty
 # stations = [n for n, dat in G.nodes(data=True) if dat.get('node_type') == 'fire_station']
 
 print("Getting Routes")
-routes, route_lengths = get_init_solution(G, stations)
+routes, route_lengths, _ = get_init_solution(G, stations)
 for start, route in routes.items():
     print(f"Route starting at {start}: {route}")
     print(f"Total length: {route_lengths[start]}")
