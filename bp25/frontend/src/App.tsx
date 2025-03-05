@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChakraProvider, Box, Input, Button, Heading, Text, VStack, Container, Spinner, Flex } from '@chakra-ui/react';
+import { ChakraProvider, Box, Input, Button, Heading, Text, VStack, Container, Spinner, Flex, List, ListItem } from '@chakra-ui/react';
 import { defaultSystem } from "@chakra-ui/react";
 import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -512,6 +512,148 @@ async function findHighestRiskLocation(lat: number, lng: number, radius: number 
   }
 }
 
+function AboutPage({ onClose }: { onClose: () => void }) {
+  return (
+    <Box
+      position="fixed"
+      top="0"
+      left="0"
+      right="0"
+      bottom="0"
+      bg="rgba(0,0,0,0.7)"
+      zIndex={1000}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      p={4}
+      onClick={onClose}
+    >
+      <Box
+        bg="white"
+        borderRadius="lg"
+        p={8}
+        maxWidth="800px"
+        maxHeight="90vh"
+        overflowY="auto"
+        onClick={(e) => e.stopPropagation()}
+        boxShadow="xl"
+      >
+        <Heading as="h2" size="xl" mb={6} color="teal.600" textAlign="center">
+          About Dispatch Services
+        </Heading>
+        
+        <Text fontSize="lg" mb={6} lineHeight="tall">
+          Natural disasters take the front page of the news constantly. They are relentless, unpredictable, and difficult to manage. 
+          In times of crisis, efficient response efforts can mean the difference between life and death. In the most recent LA wildfires, 
+          29 people passed away with countless more experiencing casualties. Inefficient responses to natural crises like these can result 
+          in families losing loved ones as well as the destruction that could have been prevented. Witnessing the devastation caused by 
+          these tragic events motivated us to create a system that helps emergency services allocate resources effectively to mitigate 
+          damage and prioritize safety.
+        </Text>
+        
+        <Text fontSize="lg" mb={8} lineHeight="tall">
+          When disaster strikes, responders need a clear strategy to ensure help reaches those in need as quickly as possible. 
+          However, the chaotic nature of emergencies often makes real-time decision-making difficult. Our project aims to bridge 
+          this gap by optimizing emergency response through a responsive mapping system that enables emergency responders to 
+          strategically deploy resources, ensuring faster and more effective aid distribution.
+        </Text>
+        
+        <Flex justifyContent="center">
+          <Button colorScheme="teal" size="lg" onClick={onClose}>
+            Close
+          </Button>
+        </Flex>
+      </Box>
+    </Box>
+  );
+}
+
+function MethodologyPage({ onClose }: { onClose: () => void }) {
+  return (
+    <Box
+      position="fixed"
+      top="0"
+      left="0"
+      right="0"
+      bottom="0"
+      bg="rgba(0,0,0,0.7)"
+      zIndex={1000}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      p={4}
+      onClick={onClose}
+    >
+      <Box
+        bg="white"
+        borderRadius="lg"
+        p={8}
+        maxWidth="800px"
+        maxHeight="90vh"
+        overflowY="auto"
+        onClick={(e) => e.stopPropagation()}
+        boxShadow="xl"
+      >
+        <Heading as="h2" size="xl" mb={6} color="teal.600" textAlign="center">
+          Our Methodology
+        </Heading>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          Our project provides a dynamic, data-driven, optimal routing system for first-responders to minimize the maximum time it takes to reach a potential victim. To do this, we represent the streetview as a graph: nodes are placed on buildings and road intersections, while edges represent roads and streets.
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          To generate our optimal routing system, we formulate this task as a programming problem: Given N starting points, how can we partition the set of building nodes into N routes so that the maximum length of any path is minimized?
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          For the N = 1 case, this already reduces to the Traveler's Salesman Problem, a well-known NP-Hard Problem. This shows that for even small N, this problem is highly nontrivial, and there is definitely a necessity for optimization to ensure that the most lives are saved.
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          To solve this in the general case, we use a technique known as Simulated Annealing which takes a base solution and performs localized operations. These localized operations induce a change or "entropy" in how good the solution is. We always accept better solutions, but we also accept worse solutions with a probability that decreases over time (this variable is controlled through a "Temperature").
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          To be more precise, we account for three "localized operations" that we can perform on an existing solution:
+        </Text>
+        
+        <List.Root pl={8} mb={4}>
+          <ListItem>Range Reversal on an arbitrary subarray of locations in a route</ListItem>
+          <ListItem>Removing and replacing a location from one route into another</ListItem>
+          <ListItem>Removing and replacing a location in a route within itself</ListItem>
+        </List.Root>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          To obtain a sufficiently optimal base solution, we code a custom greedy algorithm. At each time step, we take the current path with the minimum length, use a Dijkstra-esque BFS to find the closest unvisited building, and traverse to that building. After we generate this solution, we further optimize upon it with the aforementioned simulated annealing. We find that on average, simulated annealing reduces the maximum path length generated by the greedy algorithm by a staggering 10.9%, showing the efficacy of the algorithm at saving lives.
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          Although this static approach is good, fires and other natural disasters are extremely dynamic environments, with roads suddenly becoming inaccessible. To account for this, every time our graph is updated with new information, we run a mini simulated annealing (i.e. re-raising the temperature slightly) to let the routing converge to a new local minimum efficiently.
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          In fire-affected areas, nodes within the impacted radius are automatically removed, ensuring teams avoid hazardous zones and focus their efforts on reachable locations. This allows for real-time adaptability to changing disaster conditions, improving safety and efficiency.
+        </Text>
+        
+        <Text fontSize="lg" mb={4} lineHeight="tall">
+          Additionally, responders can manually delete nodes and edges, updating the map to reflect roadblocks, damaged structures, or newly accessible paths. This level of customization ensures that emergency teams can quickly adjust their strategies, responding with greater precision.
+        </Text>
+        
+        <Text fontSize="lg" mb={6} lineHeight="tall">
+          By integrating these features, our system enhances emergency response efforts in order to maximize the impact of relief operations.
+        </Text>
+        
+        <Flex justifyContent="center">
+          <Button colorScheme="teal" size="lg" onClick={onClose}>
+            Close
+          </Button>
+        </Flex>
+      </Box>
+    </Box>
+  );
+}
+
 function App() {
   const [location, setLocation] = useState('');
   const [mapLocation, setMapLocation] = useState<[number, number] | null>(null);
@@ -525,6 +667,8 @@ function App() {
   const [fires, setFires] = useState<any[]>([]);
   const [isLoadingFires, setIsLoadingFires] = useState(false);
   const [fireError, setFireError] = useState('');
+  const [showAbout, setShowAbout] = useState(false);
+  const [showMethodology, setShowMethodology] = useState(false);
 
   const handleSearch = async () => {
     if (!location.trim()) {
@@ -791,6 +935,30 @@ function App() {
             <Text fontSize="lg" color="gray.600" textAlign="center">
               Intelligent allocation of emergency services during natural disasters.
             </Text>
+            
+            <Flex mt={2} gap={4}>
+              <Button 
+                variant="outline" 
+                color="teal.500" 
+                onClick={() => setShowAbout(true)}
+                borderWidth="2px"
+                borderColor="teal.500"
+                _hover={{ bg: "teal.500", color: "white" }}
+              >
+                Learn More
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                color="teal.500" 
+                onClick={() => setShowMethodology(true)}
+                borderWidth="2px"
+                borderColor="teal.500"
+                _hover={{ bg: "teal.500", color: "white" }}
+              >
+                Methodology
+              </Button>
+            </Flex>
           </VStack>
           
           <Box 
@@ -954,6 +1122,12 @@ function App() {
           )}
         </Container>
       </Box>
+      
+      {/* Render the About page when showAbout is true */}
+      {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
+      
+      {/* Render the Methodology page when showMethodology is true */}
+      {showMethodology && <MethodologyPage onClose={() => setShowMethodology(false)} />}
     </ChakraProvider>
   );
 }
