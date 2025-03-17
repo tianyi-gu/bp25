@@ -1,5 +1,7 @@
 # Rapid Relief Routing (Blueprint '25)
 
+Winning project of MIT 2025 Blueprint Hackathon, General Division 
+
 ## Inspiration
 Natural disasters take the front page of the news constantly. They are relentless, unpredictable, and difficult to manage. In times of crisis, efficient response efforts can mean the difference between life and death. In the most recent LA wildfires, 29 people passed away with countless more experiencing casualties. Inefficient responses to natural crises like these can result in families losing loved ones as well as the destruction that could have been prevented. Witnessing the devastation caused by these tragic events motivated us to create a system that helps emergency services allocate resources effectively to mitigate damage and prioritize safety.
 
